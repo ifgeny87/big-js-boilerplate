@@ -1,0 +1,12 @@
+# Cache
+.DS_Store
+/node_modules/
+
+# Build
+/dist/
+
+# Jest Coverage results
+/coverage/
+
+# Dev config
+config.yaml

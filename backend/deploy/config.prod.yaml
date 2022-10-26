@@ -1,0 +1,9 @@
+db:
+  host: "db"
+  port: 5432
+  database: "test"
+  username: "test"
+  password: "test"
+jwt:
+  saltKey: "jhasu7a6s786KJHHFjakljshgklajsyt87lajkshgjh6786786874896876HJGassjKJHJKGLKashfi7687687"
+  signTime: "48h"
