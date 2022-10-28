@@ -1,0 +1,11 @@
+---
+- targets:
+  - nodeexporter:9100
+  labels:
+    env: monitoring
+    job: node-exporter
+- targets:
+  - mrvk.pro:9100
+  labels:
+    env: prod
+    job: node-exporter

@@ -1,0 +1,79 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+
+ingester:
+  lifecycler:
+    address: 127.0.0.1
+    ring:
+      kvstore:
+        store: inmemory
+      replication_factor: 1
+    final_sleep: 0s
+  chunk_idle_period: 5m
+  chunk_retain_period: 30s
+  max_transfer_retries: 0
+  wal:
+    enabled: true
+    dir: /loki/wal
+
+schema_config:
+  configs:
+    - from: 2022-02-22
+      store: boltdb
+      object_store: filesystem
+      schema: v11
+      index:
+        prefix: index_
+        period: 24h
+
+storage_config:
+  boltdb:
+    directory: /loki/index
+
+  filesystem:
+    directory: /loki/chunks
+
+limits_config:
+  enforce_metric_name: false
+  reject_old_samples: true
+  reject_old_samples_max_age: 720h
+  retention_period: 720h
+  ingestion_rate_mb: 10
+  ingestion_burst_size_mb: 12
+
+compactor:
+#  working_directory: /data/retention
+  shared_store: gcs
+  compaction_interval: 1h
+  retention_enabled: true
+  retention_delete_delay: 720h
+  retention_delete_worker_count: 10
+
+chunk_store_config:
+  max_look_back_period: 720h
+  chunk_cache_config:
+    enable_fifocache: true
+    fifocache:
+      max_size_bytes: 500MB
+query_range:
+  results_cache:
+    cache:
+      enable_fifocache: true
+      fifocache:
+        max_size_bytes: 500MB
+table_manager:
+  retention_deletes_enabled: true
+  retention_period: 720h
+ruler:
+  storage:
+    type: local
+    local:
+      directory: /etc/loki/rules
+  rule_path: /etc/loki/rules/tule.yaml
+  alertmanager_url: http://alertmanager:9093
+  ring:
+    kvstore:
+      store: inmemory
+  enable_api: true

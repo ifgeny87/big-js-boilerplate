@@ -1,0 +1,351 @@
+version: '2.4'
+
+networks:
+  monitor-net:
+    driver: bridge
+
+volumes:
+    prometheus_data: {}
+    prometheus_bot_data: {}
+    grafana_data: {}
+    alertmanager_data: {}
+    loki_data: {}
+
+services:
+
+  prometheus:
+    image: prom/prometheus:v${PROMETHEUS_VERSION}
+    container_name: prometheus
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=720h'
+      - '--web.enable-lifecycle'
+    extra_hosts:
+     - "mvrk.cf:91.201.53.219"
+#     - "server2.mydomain.com:10.10.10.2"
+#     - "server3.mydomain.com:10.10.10.3"
+#     - "server4.mydomain.com:10.10.10.4"
+    restart: unless-stopped
+#    expose:
+#      - 9090
+    ports:
+      - 127.0.0.1:9090:9090
+    healthcheck:
+        test: curl -sS http://127.0.0.1:9090 || echo 1
+        interval: 5s
+        timeout: 10s
+        retries: 3
+    networks:
+      - monitor-net
+    mem_limit: ${PROMETHEUS_MEM_LIMIT}
+    mem_reservation: ${PROMETHEUS_MEM_RESERVATION}
+    labels:
+      org.label-schema.group: "monitoring"
+
+  alertmanager:
+    image: prom/alertmanager:v${ALERTMANGER_VERSION}
+    container_name: alertmanager
+    volumes:
+      - ./alertmanager/etc/:/etc/alertmanager/
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+#    environment:
+#      - SLACK_URL=${SLACK_URL}
+#      - SLACK_CHANNEL=${SLACK_CHANNEL}
+#      - SLACK_USER=${SLACK_USER:-alertmanager}
+    restart: unless-stopped
+#    expose:
+#      - 9093
+    ports:
+      - 127.0.0.1:9093:9093
+    healthcheck:
+        test: curl -sS http://127.0.0.1:9093 || echo 1
+        interval: 5s
+        timeout: 10s
+        retries: 3
+    networks:
+      - monitor-net
+    mem_limit: ${ALERTMANGER_MEM_LIMIT}
+    mem_reservation: ${ALERTMANGER_MEM_RESERVATION}
+    labels:
+      org.label-schema.group: "monitoring"
+    logging:
+        driver: "json-file"
+        options:
+          max-size: "5m"
+
+  nodeexporter:
+    image: prom/node-exporter:v${NODE_EXPORTER_VERSION}
+    container_name: nodeexporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+    restart: unless-stopped
+#    expose:
+#      - 9100
+    ports:
+      - 127.0.0.1:9100:9100
+    healthcheck:
+        test: curl -sS http://127.0.0.1:9100 || echo 1
+        interval: 5s
+        timeout: 10s
+        retries: 3
+    networks:
+      - monitor-net
+    mem_limit: ${NODE_EXPORTER_MEM_LIMIT}
+    mem_reservation: ${NODE_EXPORTER_MEM_RESERVATION}
+    labels:
+      org.label-schema.group: "monitoring"
+    logging:
+        driver: "json-file"
+        options:
+          max-size: "5m"
+
+  cadvisor:
+    image: gcr.io/google-containers/cadvisor:v${CADVISOR_VERSION}
+    container_name: cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+#      - /cgroup:/cgroup:ro #doesn't work on MacOS only for Linux
+    restart: unless-stopped
+#    expose:
+#      - 8085
+    ports:
+      - 127.0.0.1:8085:8085
+    networks:
+      - monitor-net
+    mem_limit: ${CADVISOR_MEM_LIMIT}
+    mem_reservation: ${CADVISOR_MEM_RESERVATION}
+    labels:
+      org.label-schema.group: "monitoring"
+    logging:
+        driver: "json-file"
+        options:
+          max-size: "5m"
+
+  grafana:
+    image: grafana/grafana:${GRAFANA_VERSION}
+    container_name: grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/datasources:/etc/grafana/datasources
+      - ./grafana/dashboards:/etc/grafana/dashboards
+      - ./grafana/share/conf/grafana.ini:/etc/grafana/grafana.ini
+#      - ./grafana/setup.sh:/setup.sh
+#    entrypoint: /setup.sh
+    environment:
+      - GF_SECURITY_ADMIN_USER=${ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_METRICS_ENABLED=true
+    restart: unless-stopped
+#    expose:
+#      - 3000
+    ports:
+      - 127.0.0.1:3000:3000
+    healthcheck:
+        test: curl -sS http://127.0.0.1:3000 || echo 1
+        interval: 5s
+        timeout: 10s
+        retries: 3
+    networks:
+      - monitor-net
+    mem_limit: ${GRAFANA_MEM_LIMIT}
+    mem_reservation: ${GRAFANA_MEM_RESERVATION}
+    labels:
+      org.label-schema.group: "monitoring"
+    logging:
+        driver: "json-file"
+        options:
+          max-size: "5m"
+
+  pushgateway:
+    image: prom/pushgateway:v${PUSHGATEWAY_VERSION}
+    container_name: pushgateway
+    restart: unless-stopped
+#    expose:
+#      - 9091
+    ports:
+      - 127.0.0.1:9091:9091
+    healthcheck:
+        test: curl -sS http://127.0.0.1:9091 || echo 1
+        interval: 5s
+        timeout: 10s
+        retries: 3
+    networks:
+      - monitor-net
+    labels:
+      org.label-schema.group: "monitoring"
+    mem_limit: ${PUSHGATEWAY_MEM_LIMIT}
+    mem_reservation: ${PUSHGATEWAY_MEM_RESERVATION}
+    logging:
+        driver: "json-file"
+        options:
+          max-size: "5m"
+
+  loki:
+    container_name: loki
+    image: grafana/loki:${LOKI_VERSION}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3100:3100"
+    healthcheck:
+        test: curl -sS http://127.0.0.1:3100 || echo 1
+        interval: 5s
+        timeout: 10s
+        retries: 3
+    volumes:
+      - ./loki/:/etc/loki/:rw
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - monitor-net
+    mem_limit: ${LOKI_MEM_LIMIT}
+    mem_reservation: ${LOKI_MEM_RESERVATION}
+    labels:
+      org.label-schema.group: "monitoring"
+
+  promtail:
+    restart: always
+    container_name: promtail
+    image: grafana/promtail:2.4.1
+    ports:
+      - "127.0.0.1:9080:9080"
+    healthcheck:
+        test: curl -sS http://127.0.0.1:9080 || echo 1
+        interval: 5s
+        timeout: 10s
+        retries: 3
+    volumes:
+      - /var/log:/var/log
+      - ./promtail/config.yaml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - monitor-net
+
+  prometheus_bot:
+    restart: always
+    container_name: prometheus_bot
+    image: moghaddas/prometheus_bot
+    ports:
+      - "127.0.0.1:9087:9087"
+    healthcheck:
+        test: curl -sS http://127.0.0.1:9087 || echo 1
+        interval: 5s
+        timeout: 10s
+        retries: 3
+    volumes:
+      - ./prometheus_bot/config.yaml:/config.yaml
+      - ./prometheus_bot/production_example.tmpl:/opt/prometheus_bot/production_example.tmpl
+      - prometheus_bot_data:/etc/telegrambot
+    networks:
+      - monitor-net
+
+  registry:
+    restart: always
+    image: registry:2.8.1
+    container_name: registry
+    ports:
+      - 127.0.0.1:5000:5000
+    healthcheck:
+        test: curl -sS http://127.0.0.1:5000 || echo 1
+        interval: 5s
+        timeout: 10s
+        retries: 3
+    environment:
+#    REGISTRY_HTTP_TLS_LETSENCRYPT_CACHEFILE: /cache.letsencrypt
+#    REGISTRY_HTTP_TLS_LETSENCRYPT_EMAIL: alarm@mrvk.cf
+#    REGISTRY_HTTP_TLS_CERTIFICATE: /certs/fullchain.pem
+#    REGISTRY_HTTP_TLS_KEY: /certs/privkey.pem
+#    REGISTRY_AUTH: htpasswd
+#    REGISTRY_AUTH_HTPASSWD_PATH: /etc/nginx/.htpasswd
+#    REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+     REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /data
+    volumes:
+    - ./registry/data:/data
+
+
+#  nginx:
+#    image: nginx:1.21.6
+#    container_name: nginx
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#    volumes:
+#      - /etc/letsencrypt:/etc/letsencrypt
+#      - ./nginx/conf:/etc/nginx/conf.d
+#      - ./nginx/www:/var/www/html
+#      - ./nginx/log:/var/log/nginx:rw
+#    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+#    networks:
+#      - monitor-net
+
+#  certbot:
+#    image: certbot/certbot
+#    container_name: certbot
+#    volumes:
+#      - /etc/letsencrypt:/etc/letsencrypt:rw
+#      - ./nginx/www:/var/www/certbot
+#      - ./nginx/log:/var/log/letsencrypt:rw
+#    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+#    networks:
+#      - monitor-net
+
+#  caddy:
+#    image: caddy/caddy:${CADDY_VERSION}
+#    container_name: caddy
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#    dns:
+#      - 8.8.8.8
+#      - 8.8.4.4
+#    volumes:
+#      - ./caddy/:/etc/caddy/:rw
+#      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+#      - ./caddy/.caddy:/root/.caddy:rw
+#    environment:
+#      - ADMIN_USER=${ADMIN_USER:-admin}
+#      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+#    restart: unless-stopped
+#    networks:
+#      - monitor-net
+
+#  webserver:
+#    container_name: nginx
+#    image: nginx:latest
+#    ports:
+#      - 80:80
+#      - 443:443
+#    restart: always
+#    volumes:
+#      - ./nginx/conf/:/etc/nginx/conf.d/:rw
+#      - ./certbot/www:/var/www/certbot/:ro
+#      - ./nginx/ssl/:/etc/nginx/ssl/:ro
+#    networks:
+#      - monitor-net
+
+#  certbot:
+#    image: certbot/cerbot:v1.7.0
+#    volumes:
+#      - ./certbot/www/:/var/www/certbot/:rw
+#    networks:
+#      - monitor-net

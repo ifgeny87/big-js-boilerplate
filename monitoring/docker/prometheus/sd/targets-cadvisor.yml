@@ -1,0 +1,6 @@
+---
+- targets:
+  - cadvisor:8085
+  labels:
+    env: monitoring
+    job: cadvisor

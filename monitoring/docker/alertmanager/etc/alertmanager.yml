@@ -1,0 +1,44 @@
+global:
+
+route:
+
+      group_by: ['alertname']
+      group_wait: 30s
+      group_interval: 10m
+      repeat_interval: 60m
+      receiver: 'prometheus_bot'
+
+#      receiver: 'email'
+#      group_by: ['alertname']
+#      group_wait: 30s
+#      group_interval: 10m
+#      repeat_interval: 60m
+
+
+receivers:
+- name: 'email'
+  email_configs:
+  - to: 'antonh2o@gmail.com'
+    from: 'alert@mrvk.cf'
+    smarthost: 'mail.netangels.ru:25'
+    auth_username: 'alert@mrvk.cf'
+    auth_identity: 'alert@mrvk.cf'
+    auth_password: 'yfqCFaHpFzom9Wx'
+
+- name: 'prometheus_bot'
+  webhook_configs:
+  - send_resolved: True
+    url: http://prometheus_bot:9087/alert/-876097972
+
+
+templates:
+- /etc/alertmanager/notifications.tmpl
+
+inhibit_rules:
+- source_match:
+    severity: 'critical'
+  target_match:
+    severity: 'warning'
+  # Apply inhibition if the instance and alertname are the same.
+  equal: ['instance', 'alertname']
+

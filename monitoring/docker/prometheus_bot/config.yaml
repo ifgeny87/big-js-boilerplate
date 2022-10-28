@@ -1,0 +1,14 @@
+#set telegram_token, for example:
+telegram_token: "5436761479:AAEUhvUpDGJCOQgFPAkt6IIIEIcVwWLn-As"
+# ONLY IF YOU USING TEMPLATE required for test
+
+#set template_path, for example:
+#template_path:"template.tmpl"
+template_path: "/opt/prometheus_bot/production_example.tmpl"
+time_zone: "Asia/Yekaterinburg"
+#Europe/Moscow"
+split_token: "|"
+
+# ONLY IF YOU USING DATA FORMATTING FUNCTION, NOTE for developer: important or test fail
+time_outdata: "02/01/2006 15:04:05"
+split_msg_byte: 4000

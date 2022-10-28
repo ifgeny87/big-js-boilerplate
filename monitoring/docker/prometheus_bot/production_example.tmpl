@@ -1,0 +1,28 @@
+{{if eq .Status "firing"}}
+🔥 <b>Проблемы {{.Status | str_UpperCase}} ({{len .Alerts}})</b>
+{{end -}}
+{{if eq .Status "resolved"}}
+✅ <b>Проблемы {{.Status | str_UpperCase}} ({{len .Alerts}})</b>
+{{end -}}
+
+{{range $val := .Alerts -}}
+• Alert: <code>{{$val.GeneratorURL}}</code>
+  {{if HasKey $val.Annotations "description" -}}
+  Description: <code>{{index $val.Annotations "description"}}</code>
+  {{end -}}
+  {{if HasKey $val.Annotations "measureUnit" -}}
+  Measure Unit: {{str_Format_MeasureUnit (index $val.Annotations "measureUnit") (index $val.Annotations "value")}}
+  {{end -}}
+  {{if HasKey $val.Annotations "value" -}}
+  Value: {{index $val.Annotations "value" | str_FormatFloat}}
+  {{end -}}
+  {{$severity := index $val.Labels "severity" -}}
+  Severity: {{$severity -}}
+  {{if eq $severity "warning"}} ⚠️{{else if eq $severity "critical"}} 🚨{{end}}
+  Active from: {{$val.StartsAt | str_FormatDate -}}
+  {{- range $key, $value := $val.Annotations -}}
+  {{- if and (and (and (ne $key "name") (ne $key "description")) (ne $key "value")) (ne $key "measureUnit")}}
+  {{$key | str_Title}}: {{$value}}
+  {{- end}}
+  {{end}}
+{{end -}}

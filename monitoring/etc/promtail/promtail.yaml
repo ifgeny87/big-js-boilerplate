@@ -1,0 +1,36 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+- url: https://loki.mrvk.cf/loki/api/v1/push
+  basic_auth:
+    username: lokilogger
+    password: NdaviEnOP
+
+scrape_configs:
+- job_name: prod-mysql_backup_short
+  journal:
+      json: false
+  static_configs:
+  - targets:
+      - localhost
+    labels:
+      job: mysql-backuplog_short
+      __path__: /var/log/backups/backup_short.log
+
+- job_name: prod-mysql_backup_long
+  journal:
+      json: false
+  static_configs:
+  - targets:
+      - localhost
+    labels:
+      job: mysql-backuplog_long
+      __path__: /var/log/backups/backup_LONG.log
+
+#external_labels:
+#  - serverEnv: "release"

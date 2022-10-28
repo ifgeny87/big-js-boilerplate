@@ -1,0 +1,12 @@
+groups:
+    - name: error_fire
+      rules:
+        - alert: HighPercentageError
+          expr: |
+            rate({level="error",serverEnv="prod"} | json | line_format "{{.error}} {{.message}}" [1m])
+              > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: High Percentage Error {{.message}}
